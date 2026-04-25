@@ -1,0 +1,55 @@
+name: Sarkari Scraper
+
+on:
+  schedule:
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+    inputs:
+      category:
+        description: 'Which category to scrape'
+        required: true
+        default: 'ALL'
+        type: choice
+        options:
+          - ALL
+          - VACANCY
+          - ADMIT_CARD
+          - RESULT
+          - ANSWER_KEY
+      count:
+        description: 'How many items per category'
+        required: true
+        default: '15'
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scraper
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          CATEGORY="${{ github.event.inputs.category || 'ALL' }}"
+          COUNT="${{ github.event.inputs.count || '15' }}"
+          echo "Running scraper: category=$CATEGORY, count=$COUNT"
+          python master_scraper.py "$CATEGORY" "$COUNT"
